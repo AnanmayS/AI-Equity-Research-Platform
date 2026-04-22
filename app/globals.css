@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --surface: 222 37% 10%;
+    --surface-elevated: 222 32% 13%;
+    --card: 222 37% 10%;
+    --card-foreground: 210 40% 96%;
+    --primary: 210 40% 96%;
+    --primary-foreground: 222 47% 9%;
+    --secondary: 222 28% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 28% 15%;
+    --muted-foreground: 215 16% 68%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 222 47% 7%;
+    --destructive: 0 68% 58%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 154 54% 58%;
+    --warning: 42 85% 62%;
+    --border: 222 20% 20%;
+    --border-strong: 220 16% 32%;
+    --input: 222 20% 24%;
+    --ring: 199 89% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background:
+      linear-gradient(180deg, hsl(222 47% 7%) 0%, hsl(222 42% 9%) 48%, hsl(222 47% 7%) 100%);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    letter-spacing: 0;
+  }
+}
+
+@layer components {
+  .mesh-bg {
+    background:
+      radial-gradient(circle at top left, hsl(199 89% 48% / 0.18), transparent 32rem),
+      radial-gradient(circle at bottom right, hsl(262 83% 58% / 0.12), transparent 30rem),
+      linear-gradient(180deg, hsl(var(--background)), hsl(222 42% 9%));
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
