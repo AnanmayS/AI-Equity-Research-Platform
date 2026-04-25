@@ -1,0 +1,16 @@
+{
+  "name": "polymarket-soccer-edge-agent",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/mcp-server",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "lint:web": "npm --workspace apps/web run lint",
+    "test:api": "cd apps/api && pytest",
+    "docker:up": "docker compose up --build"
+  }
+}
+
