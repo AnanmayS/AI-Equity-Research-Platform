@@ -13,6 +13,26 @@ Users enter a ticker, and the app creates a structured research memo with:
 
 The app does **not** ask the AI to invent financial data. It fetches real financial data first, normalizes it into JSON, and then asks the AI to interpret that data.
 
+## Screenshots
+
+### Home
+
+![Home screen with ticker search](public/screenshots/home.png)
+
+### Generating a memo
+
+![Memo generation progress state](public/screenshots/generating.png)
+
+### Finished report
+
+![Completed research memo view](public/screenshots/report.png)
+
+<details>
+<summary>More UI (peer comparison)</summary>
+
+![Peer comparison table and similar stocks](public/screenshots/peers.png)
+</details>
+
 ## Tech Stack
 
 - Next.js App Router
