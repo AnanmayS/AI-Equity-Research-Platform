@@ -1,5 +1,7 @@
 # AI Equity Research Platform
 
+[![CI](https://github.com/AnanmayS/AI-Equity-Research-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/AnanmayS/AI-Equity-Research-Platform/actions/workflows/ci.yml)
+
 A full-stack web app for researching public stocks in plain English.
 
 Users enter a ticker, and the app creates a structured research memo with:
