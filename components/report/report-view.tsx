@@ -10,6 +10,7 @@ import { MemoScoreBadge } from "@/components/research/memo-score-badge";
 import { MetricCard } from "@/components/research/metric-card";
 import { PeerComparisonTable } from "@/components/research/peer-comparison-table";
 import { SectionCard } from "@/components/research/section-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { InvestmentReport } from "@/lib/types";
 import { formatCompactNumber, formatPercent, formatRatio } from "@/lib/utils";
@@ -252,6 +253,145 @@ export function ReportView({
           </div>
         </div>
       </SectionCard>
+
+      {report.technicalAnalysis ? (
+        <SectionCard
+          eyebrow="Technical Analysis"
+          title="Price action &amp; key levels"
+          subtitle="Trend, volume, and support/resistance signals from the AI agent."
+          action={
+            <MemoScoreBadge label="Technical" score={report.technicalAnalysis.technical_score} />
+          }
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Trend
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.technicalAnalysis.trend_assessment}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Moving averages
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.technicalAnalysis.moving_average_analysis}
+              </p>
+            </div>
+          </div>
+          {report.technicalAnalysis.key_levels.length > 0 ? (
+            <div className="mt-6 border-t border-border pt-4">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Key levels
+              </h3>
+              <BulletList items={report.technicalAnalysis.key_levels} />
+            </div>
+          ) : null}
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
+            {report.technicalAnalysis.summary}
+          </p>
+        </SectionCard>
+      ) : null}
+
+      {report.esgRisk ? (
+        <SectionCard
+          eyebrow="ESG &amp; Risk"
+          title="Environmental, social &amp; regulatory exposure"
+          subtitle="Governance, litigation, and regulatory risk signals from the AI agent."
+          action={
+            <MemoScoreBadge label="ESG risk" score={report.esgRisk.esg_score} />
+          }
+        >
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Governance
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.esgRisk.governance_assessment}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Regulatory exposure
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.esgRisk.regulatory_exposure}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Litigation risk
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.esgRisk.litigation_risk}
+              </p>
+            </div>
+          </div>
+          {report.esgRisk.esg_red_flags.length > 0 ? (
+            <div className="mt-6 border-t border-border pt-4">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-destructive">
+                Red flags
+              </h3>
+              <BulletList items={report.esgRisk.esg_red_flags} tone="warning" />
+            </div>
+          ) : null}
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
+            {report.esgRisk.summary}
+          </p>
+        </SectionCard>
+      ) : null}
+
+      {report.managementQuality ? (
+        <SectionCard
+          eyebrow="Management Quality"
+          title="Leadership &amp; capital allocation"
+          subtitle="Signals about management quality, insider activity, and capital allocation."
+          action={
+            <MemoScoreBadge label="Management" score={report.managementQuality.management_score} />
+          }
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Leadership
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.managementQuality.leadership_assessment}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Capital allocation
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-pretty">
+                {report.managementQuality.capital_allocation_assessment}
+              </p>
+            </div>
+          </div>
+          {report.managementQuality.positive_signals.length > 0 ? (
+            <div className="mt-6 border-t border-border pt-4">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-green-500">
+                Positive signals
+              </h3>
+              <BulletList items={report.managementQuality.positive_signals} />
+            </div>
+          ) : null}
+          {report.managementQuality.negative_signals.length > 0 ? (
+            <div className="mt-4">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-destructive">
+                Negative signals
+              </h3>
+              <BulletList items={report.managementQuality.negative_signals} tone="danger" />
+            </div>
+          ) : null}
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
+            {report.managementQuality.summary}
+          </p>
+        </SectionCard>
+      ) : null}
 
       <PeerComparisonTable
         data={report.peerComparison}

@@ -3,14 +3,24 @@ import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 
-import { BEAR_CASE_PROMPT, DEEP_DIVE_PROMPT, PEER_COMPARISON_PROMPT } from "@/lib/prompts";
+import {
+  BEAR_CASE_PROMPT,
+  DEEP_DIVE_PROMPT,
+  ESG_RISK_PROMPT,
+  MANAGEMENT_QUALITY_PROMPT,
+  PEER_COMPARISON_PROMPT,
+  TECHNICAL_ANALYSIS_PROMPT
+} from "@/lib/prompts";
 import type {
   BearCaseResult,
   CompanyProfile,
   DeepDiveResult,
+  EsgRiskResult,
+  ManagementQualityResult,
   NormalizedStockData,
   PeerComparisonRow,
-  PeerComparisonResult
+  PeerComparisonResult,
+  TechnicalAnalysisResult
 } from "@/lib/types";
 
 const score = z.number().min(1).max(10);
@@ -45,6 +55,34 @@ export const bearCaseSchema = z.object({
   top_risks: z.array(z.string()).min(3).max(5),
   thesis_breakers: z.array(z.string()),
   confidence_in_bear_case: score
+});
+
+export const technicalAnalysisSchema = z.object({
+  trend_assessment: z.string(),
+  moving_average_analysis: z.string(),
+  volume_analysis: z.string(),
+  key_levels: z.array(z.string()),
+  technical_score: score,
+  summary: z.string()
+});
+
+export const esgRiskSchema = z.object({
+  governance_assessment: z.string(),
+  regulatory_exposure: z.string(),
+  litigation_risk: z.string(),
+  esg_red_flags: z.array(z.string()),
+  esg_score: score,
+  summary: z.string()
+});
+
+export const managementQualitySchema = z.object({
+  leadership_assessment: z.string(),
+  insider_trading_signals: z.string(),
+  capital_allocation_assessment: z.string(),
+  positive_signals: z.array(z.string()),
+  negative_signals: z.array(z.string()),
+  management_score: score,
+  summary: z.string()
 });
 
 export const peerSuggestionSchema = z.object({
@@ -217,6 +255,64 @@ export async function runBearCase(financialData: NormalizedStockData): Promise<B
     return result.object;
   } catch {
     return fallbackBearCase(financialData);
+  }
+}
+
+export async function runTechnicalAnalysis(
+  financialData: NormalizedStockData
+): Promise<TechnicalAnalysisResult> {
+  try {
+    const result = await generateObject({
+      model: model(),
+      system: TECHNICAL_ANALYSIS_PROMPT,
+      prompt: dataPrompt(financialData),
+      schema: technicalAnalysisSchema,
+      experimental_repairText: repairJsonText,
+      maxRetries: 2,
+      temperature: 0.2
+    });
+
+    return result.object;
+  } catch {
+    return fallbackTechnicalAnalysis(financialData);
+  }
+}
+
+export async function runEsgRisk(financialData: NormalizedStockData): Promise<EsgRiskResult> {
+  try {
+    const result = await generateObject({
+      model: model(),
+      system: ESG_RISK_PROMPT,
+      prompt: dataPrompt(financialData),
+      schema: esgRiskSchema,
+      experimental_repairText: repairJsonText,
+      maxRetries: 2,
+      temperature: 0.2
+    });
+
+    return result.object;
+  } catch {
+    return fallbackEsgRisk(financialData);
+  }
+}
+
+export async function runManagementQuality(
+  financialData: NormalizedStockData
+): Promise<ManagementQualityResult> {
+  try {
+    const result = await generateObject({
+      model: model(),
+      system: MANAGEMENT_QUALITY_PROMPT,
+      prompt: dataPrompt(financialData),
+      schema: managementQualitySchema,
+      experimental_repairText: repairJsonText,
+      maxRetries: 2,
+      temperature: 0.2
+    });
+
+    return result.object;
+  } catch {
+    return fallbackManagementQuality(financialData);
   }
 }
 
@@ -402,4 +498,121 @@ function simplifyCompanyDescription(description: string) {
   const cleaned = description.replace(/\s+/g, " ").trim();
   const firstTwoSentences = cleaned.match(/^(.+?[.!?])\s+(.+?[.!?])/)?.[0];
   return firstTwoSentences || cleaned;
+}
+
+function fallbackTechnicalAnalysis(financialData: NormalizedStockData): TechnicalAnalysisResult {
+  const growth = financialData.revenueGrowthYoY ?? 0;
+  const psRatio = financialData.psRatio ?? 0;
+  const trendText =
+    growth > 0.2
+      ? `${financialData.ticker} has shown strong revenue growth, which often correlates with positive price momentum.`
+      : growth > 0
+        ? `${financialData.ticker} has modest revenue growth, suggesting a neutral-to-positive trend.`
+        : `${financialData.ticker} has flat or declining revenue, which may reflect a downtrend.`;
+  const volumeText = `Detailed volume data was not available from the current data provider (${financialData.source.provider}). Volume analysis requires market data feeds.`;
+
+  return {
+    trend_assessment: trendText,
+    moving_average_analysis: `Moving average analysis requires historical price data which is not available through the current fundamental data pipeline. Consider using a dedicated charting platform.`,
+    volume_analysis: volumeText,
+    key_levels: [
+      `P/S ratio of ${psRatio.toFixed(2)} provides a valuation reference level`,
+      `Revenue growth of ${(growth * 100).toFixed(1)}% indicates business momentum`
+    ],
+    technical_score: clampScore(5 + growth * 5),
+    summary: `${financialData.ticker} is growing revenue at ${(growth * 100).toFixed(1)}% year-over-year, which typically supports a neutral-to-positive technical outlook. A full technical analysis requires price and volume data from a market data provider.`
+  };
+}
+
+function fallbackEsgRisk(financialData: NormalizedStockData): EsgRiskResult {
+  const sector = financialData.sector?.toLowerCase() || "";
+  const industry = financialData.industry?.toLowerCase() || "";
+  const regulatoryKeywords: string[] = [];
+  if (
+    sector.includes("tech") ||
+    sector.includes("technology") ||
+    industry.includes("software") ||
+    industry.includes("semiconductor")
+  ) {
+    regulatoryKeywords.push("Data privacy and AI regulation are relevant risks for this sector.");
+  }
+  if (
+    sector.includes("finance") ||
+    sector.includes("bank") ||
+    industry.includes("financial")
+  ) {
+    regulatoryKeywords.push("Financial services face evolving capital and compliance requirements.");
+  }
+  if (
+    sector.includes("health") ||
+    industry.includes("pharma") ||
+    industry.includes("biotech")
+  ) {
+    regulatoryKeywords.push("Healthcare and pharmaceutical companies face FDA and pricing scrutiny.");
+  }
+  if (
+    sector.includes("energy") ||
+    industry.includes("oil") ||
+    industry.includes("mining")
+  ) {
+    regulatoryKeywords.push("Energy companies face significant environmental and carbon transition risks.");
+  }
+
+  return {
+    governance_assessment: `${financialData.companyName} is a publicly traded company subject to SEC reporting requirements and standard corporate governance rules. Governance quality cannot be fully assessed without proxy statement data.`,
+    regulatory_exposure:
+      regulatoryKeywords.length > 0
+        ? regulatoryKeywords.join(" ")
+        : `${financialData.companyName} operates in ${financialData.sector || "its current sector"}, which has general regulatory exposure.`,
+    litigation_risk: `Litigation risk assessment requires access to SEC legal proceedings disclosures (Item 3 of 10-K). Check the company's latest 10-K filing for active legal proceedings.`,
+    esg_red_flags: [],
+    esg_score: 5,
+    summary: `${financialData.ticker} operates in ${financialData.sector || "its sector"} with standard regulatory exposure. A comprehensive ESG assessment requires specialized data sources beyond fundamental financial statements.`
+  };
+}
+
+function fallbackManagementQuality(financialData: NormalizedStockData): ManagementQualityResult {
+  const operatingMargin = financialData.operatingMargin ?? 0;
+  const grossMargin = financialData.grossMargin ?? 0;
+  const revenueGrowth = financialData.revenueGrowthYoY ?? 0;
+  const positive: string[] = [];
+  const negative: string[] = [];
+
+  if (operatingMargin > 0.15) {
+    positive.push(
+      `Operating margin of ${(operatingMargin * 100).toFixed(1)}% suggests disciplined cost management.`
+    );
+  }
+  if (grossMargin > 0.4) {
+    positive.push(
+      `Gross margin of ${(grossMargin * 100).toFixed(1)}% indicates pricing power and product differentiation.`
+    );
+  }
+  if (revenueGrowth > 0.1) {
+    positive.push(
+      `Revenue growth of ${(revenueGrowth * 100).toFixed(1)}% shows effective execution.`
+    );
+  }
+  if (operatingMargin <= 0 && operatingMargin > -0.1) {
+    negative.push("Near-zero or negative operating margins raise questions about cost discipline.");
+  }
+  if (revenueGrowth <= 0) {
+    negative.push("Flat or declining revenue may indicate competitive or execution challenges.");
+  }
+
+  return {
+    leadership_assessment: `${financialData.companyName} management quality is inferred from financial results. Operating margin of ${(operatingMargin * 100).toFixed(1)}% and revenue growth of ${(revenueGrowth * 100).toFixed(1)}% are positive signals. Insider trading and leadership tenure data require dedicated data sources.`,
+    insider_trading_signals:
+      "Insider transaction analysis requires Form 4 filing data from SEC EDGAR, which is not available through the current fundamental data pipeline.",
+    capital_allocation_assessment:
+      revenueGrowth > 0.1
+        ? `${revenueGrowth > 0.2 ? "Strong" : "Moderate"} revenue growth suggests effective capital deployment. The debt-to-equity ratio should be reviewed for balance sheet discipline.`
+        : "Capital allocation assessment is limited without cash flow and balance sheet trend data from the data provider.",
+    positive_signals: positive,
+    negative_signals: negative,
+    management_score: clampScore(5 + operatingMargin * 5 + revenueGrowth * 3),
+    summary: `${financialData.ticker} management appears ${
+      operatingMargin > 0.1 && revenueGrowth > 0.05 ? "competent based on financial results" : "to face operational challenges based on financial metrics"
+    }. A full management quality review requires proxy statements, insider trading filings, and capital allocation history.`
+  };
 }

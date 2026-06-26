@@ -82,6 +82,34 @@ export type BearCaseResult = {
   confidence_in_bear_case: number;
 };
 
+export type TechnicalAnalysisResult = {
+  trend_assessment: string;
+  moving_average_analysis: string;
+  volume_analysis: string;
+  key_levels: string[];
+  technical_score: number;
+  summary: string;
+};
+
+export type EsgRiskResult = {
+  governance_assessment: string;
+  regulatory_exposure: string;
+  litigation_risk: string;
+  esg_red_flags: string[];
+  esg_score: number;
+  summary: string;
+};
+
+export type ManagementQualityResult = {
+  leadership_assessment: string;
+  insider_trading_signals: string;
+  capital_allocation_assessment: string;
+  positive_signals: string[];
+  negative_signals: string[];
+  management_score: number;
+  summary: string;
+};
+
 export type InvestmentReport = {
   id?: string;
   ticker: string;
@@ -89,6 +117,9 @@ export type InvestmentReport = {
   deepDive: DeepDiveResult;
   peerComparison: PeerComparisonResult;
   bearCase: BearCaseResult;
+  technicalAnalysis?: TechnicalAnalysisResult;
+  esgRisk?: EsgRiskResult;
+  managementQuality?: ManagementQualityResult;
   createdAt: string;
   cached?: boolean;
   saved?: boolean;
