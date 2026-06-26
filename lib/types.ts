@@ -38,6 +38,9 @@ export type NormalizedStockData = {
   psRatio: number | null;
   evToEbitda: number | null;
   peRatio: number | null;
+  debtToEquity: number | null;
+  totalDebt: number | null;
+  cashAndEquivalents: number | null;
   peers: NormalizedPeer[];
   peerSource: "curated" | "manual" | "none";
   source: {
