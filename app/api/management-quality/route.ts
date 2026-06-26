@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     };
     const financialData =
       body.financialData ??
-      (await getCachedStockData(body.ticker || "", { peerTickers: body.peerTickers }));
+      (await getCachedStockData(body.ticker || "", { peerTickers: body.peerTickers })).data;
     const result = await runManagementQuality(financialData);
 
     return NextResponse.json(result);

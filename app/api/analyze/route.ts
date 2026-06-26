@@ -104,6 +104,7 @@ export async function POST(request: Request) {
             runPeerComparison(stockData),
             runBearCase(stockData),
             runTechnicalAnalysis(stockData).catch(() => undefined),
+            runEsgRisk(stockData).catch(() => undefined),
             runManagementQuality(stockData).catch(() => undefined),
           ]);
 
