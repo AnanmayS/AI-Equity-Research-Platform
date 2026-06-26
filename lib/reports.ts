@@ -1,9 +1,11 @@
+import type { CacheInfo } from "@/lib/stock-data-cache";
+import { computeTtlHours } from "@/lib/stock-data-cache";
 import type {
   BearCaseResult,
   DeepDiveResult,
   InvestmentReport,
   NormalizedStockData,
-  PeerComparisonResult
+  PeerComparisonResult,
 } from "@/lib/types";
 
 type ReportRow = {
@@ -19,6 +21,35 @@ type ReportRow = {
   created_at: string;
 };
 
+function buildCacheInfoForSavedReport(createdAt: string): CacheInfo {
+  const now = Date.now();
+  const created = new Date(createdAt).getTime();
+  const ttlHours = computeTtlHours();
+  const expiresAt = new Date(created + ttlHours * 60 * 60 * 1000).toISOString();
+  const ageMinutes = Math.round((now - created) / (60 * 1000));
+  const expired = now > created + ttlHours * 60 * 60 * 1000;
+
+  let reason: string;
+  if (ttlHours < 24) {
+    reason = `Earnings season — data is ${ttlHours}h cache`;
+  } else if (expired) {
+    reason = `Cached ${Math.round(ageMinutes / 60)}h ago — data is stale, refresh to update`;
+  } else if (ageMinutes < 60) {
+    reason = `Cached ${ageMinutes}m ago — next refresh in ~${ttlHours - 1}h`;
+  } else {
+    reason = `Cached ${Math.round(ageMinutes / 60)}h ago — next refresh in ~${ttlHours - Math.round(ageMinutes / 60)}h`;
+  }
+
+  return {
+    cached: true,
+    createdAt,
+    expiresAt,
+    ttlHours,
+    ageMinutes,
+    reason,
+  };
+}
+
 export function rowToReport(row: ReportRow, cached = false): InvestmentReport {
   return {
     id: row.id,
@@ -32,6 +63,7 @@ export function rowToReport(row: ReportRow, cached = false): InvestmentReport {
     managementQuality: row.management_quality_json as InvestmentReport["managementQuality"] | undefined,
     createdAt: row.created_at,
     cached,
-    saved: true
+    cacheInfo: buildCacheInfoForSavedReport(row.created_at),
+    saved: true,
   };
 }

@@ -90,10 +90,12 @@ export async function POST(request: Request) {
         }
 
         send({ type: "status", message: "Fetching verified financial data" });
-        const { data: stockData, cacheInfo } = await getCachedStockData(ticker, {
+        const cachedResult = await getCachedStockData(ticker, {
           peerTickers,
           refresh: body.refresh,
         });
+        const stockData = cachedResult.data;
+        const { cacheInfo } = cachedResult;
 
         send({ type: "status", message: "Running Deep Dive, Peer Comparison, and Bear Case agents" });
         const [deepDive, peerComparison, bearCase, technicalAnalysis, esgRisk, managementQuality] =
