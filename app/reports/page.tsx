@@ -89,7 +89,7 @@ export default function ReportsPage() {
               </Card>
             ))}
           </div>
-        ) : null}
+        )}
 
         <div className="mt-8">
           <BacktestStatsCard />
