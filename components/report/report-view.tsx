@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { BacktestCard } from "@/components/backtest/backtest-card";
 import { SimilarIdeas } from "@/components/discovery/similar-ideas";
 import { MemoScoreBadge } from "@/components/research/memo-score-badge";
 import { MetricCard } from "@/components/research/metric-card";
@@ -426,6 +427,10 @@ export function ReportView({
           Research support only, not financial advice.
         </p>
       </SectionCard>
+
+      {report.saved ? (
+        <BacktestCard report={report} />
+      ) : null}
 
       <SimilarIdeas ticker={report.ticker} />
     </div>
