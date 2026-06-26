@@ -492,26 +492,40 @@ async function fetchCore(symbol: string): Promise<CoreFinancials> {
 }
 
 async function fetchFmpCore(symbol: string): Promise<CoreFinancials> {
-  const [profile, fmpIncome] = await Promise.all([
+  const [profile, fmpIncome, secCik] = await Promise.all([
     fmp<JsonObject[]>("/profile", { symbol }),
-    optionalFmp<JsonObject[]>("/income-statement", { symbol, period: "annual", limit: 2 })
+    optionalFmp<JsonObject[]>("/income-statement", { symbol, period: "annual", limit: 2 }),
+    resolveSecCik(symbol)
   ]);
   const profileRow = profile[0];
   const income: JsonObject[] =
     fmpIncome && fmpIncome.length >= 2
       ? fmpIncome
-      : await fetchSecIncome(firstString(profileRow, ["cik"]));
+      : secCik
+        ? await fetchSecIncome(secCik)
+        : [];
   const usedSecFallback = (!fmpIncome || fmpIncome.length < 2) && income.length > 0;
+  const balanceSheet = secCik ? await fetchSecBalanceSheet(secCik) : undefined;
 
   return {
     profile: profileRow,
     income,
-    balanceSheet: undefined,
+    balanceSheet: balanceSheet ?? undefined,
     provider: usedSecFallback ? "financialmodelingprep_sec" : "financialmodelingprep",
     warnings: usedSecFallback
       ? [`FMP statements were unavailable for ${symbol}; annual filing data came from SEC Company Facts.`]
       : []
   };
+}
+
+async function resolveSecCik(symbol: string): Promise<string | null> {
+  try {
+    const row = await findSecTickerRow(symbol);
+    if (!row?.cik_str) return null;
+    return String(row.cik_str).padStart(10, "0");
+  } catch {
+    return null;
+  }
 }
 
 async function fetchFinnhubCore(symbol: string): Promise<CoreFinancials> {
@@ -535,11 +549,12 @@ async function fetchFinnhubCore(symbol: string): Promise<CoreFinancials> {
 async function fetchSecStooqCore(symbol: string): Promise<CoreFinancials> {
   const profile = await fetchSecProfileRow(symbol);
   const cik = firstString(profile, ["cik"]);
-  const [income, publicFloat, sharesOutstanding, price] = await Promise.all([
+  const [income, publicFloat, sharesOutstanding, price, balanceSheet] = await Promise.all([
     fetchSecIncome(cik),
     fetchSecPublicFloat(cik),
     fetchSecSharesOutstanding(cik),
-    fetchStooqClosePrice(symbol)
+    fetchStooqClosePrice(symbol),
+    fetchSecBalanceSheet(cik)
   ]);
   const marketCap =
     publicFloat ?? (sharesOutstanding !== null && price !== null ? sharesOutstanding * price : null);
@@ -551,7 +566,7 @@ async function fetchSecStooqCore(symbol: string): Promise<CoreFinancials> {
       mktCap: marketCap
     },
     income,
-    balanceSheet: undefined,
+    balanceSheet: balanceSheet ?? undefined,
     provider: "sec_stooq",
     warnings: [
       publicFloat !== null
@@ -647,6 +662,40 @@ async function fetchStooqClosePrice(symbol: string) {
 
   const columns = row.split(",");
   return asNumber(columns[6]);
+}
+
+async function fetchSecBalanceSheet(cik: string): Promise<JsonObject | null> {
+  const normalizedCik = cik.replace(/\D/g, "").padStart(10, "0");
+  if (!normalizedCik || normalizedCik === "0000000000") return null;
+
+  const payload = await fetchSecCompanyFacts(normalizedCik);
+  const facts = payload.facts?.["us-gaap"];
+  if (!facts) return null;
+
+  const totalAssets = secAnnualValues(facts, ["Assets"]);
+  const totalLiabilities = secAnnualValues(facts, ["Liabilities"]);
+  const longTermDebt = secAnnualValues(facts, ["LongTermDebtNoncurrent", "LongTermDebt"]);
+  const shortTermDebt = secAnnualValues(facts, ["ShortTermDebt", "ShortTermBorrowings"]);
+  const cashAndEquivalents = secAnnualValues(facts, [
+    "CashAndCashEquivalentsAtCarryingValue",
+    "CashCashEquivalentsAndShortTermInvestments",
+    "CashAndEquivalents"
+  ]);
+  const shareholdersEquity = secAnnualValues(facts, [
+    "StockholdersEquity",
+    "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+  ]);
+
+  const latestFy = secAnnualValues(facts, ["Assets"])[0]?.fy;
+
+  return {
+    totalAssets: valueForFiscalYear(totalAssets, latestFy),
+    totalLiabilities: valueForFiscalYear(totalLiabilities, latestFy),
+    longTermDebt: valueForFiscalYear(longTermDebt, latestFy),
+    shortTermDebt: valueForFiscalYear(shortTermDebt, latestFy),
+    cashAndEquivalents: valueForFiscalYear(cashAndEquivalents, latestFy),
+    shareholdersEquity: valueForFiscalYear(shareholdersEquity, latestFy)
+  };
 }
 
 async function fetchSecIncome(cik: string): Promise<JsonObject[]> {
@@ -810,11 +859,22 @@ function metricBundle(core: Awaited<ReturnType<typeof fetchCore>>) {
       : null);
   const cash = firstNumber(core.balanceSheet, [
     "cashAndCashEquivalents",
-    "cashAndShortTermInvestments"
+    "cashAndShortTermInvestments",
+    "cashAndEquivalents"
+  ]);
+  const shareholdersEquity = firstNumber(core.balanceSheet, [
+    "shareholdersEquity",
+    "stockholdersEquity",
+    "totalEquity"
   ]);
 
   const enterpriseValue =
     marketCap !== null ? marketCap + (totalDebt ?? 0) - (cash ?? 0) : null;
+
+  const debtToEquity =
+    totalDebt !== null && shareholdersEquity !== null && shareholdersEquity > 0
+      ? totalDebt / shareholdersEquity
+      : null;
 
   return {
     marketCap,
@@ -823,7 +883,10 @@ function metricBundle(core: Awaited<ReturnType<typeof fetchCore>>) {
     operatingMargin: incomeMargins.operatingMargin ?? profileOperatingMargin,
     psRatio: marketCap !== null && revenue ? marketCap / revenue : directPsRatio,
     evToEbitda: enterpriseValue !== null && ebitda ? enterpriseValue / ebitda : directEvToEbitda,
-    peRatio: marketCap !== null && netIncome ? marketCap / netIncome : directPeRatio
+    peRatio: marketCap !== null && netIncome ? marketCap / netIncome : directPeRatio,
+    totalDebt,
+    cashAndEquivalents: cash,
+    debtToEquity
   };
 }
 
@@ -904,6 +967,9 @@ export async function getStockData(
     psRatio: metrics.psRatio,
     evToEbitda: metrics.evToEbitda,
     peRatio: metrics.peRatio,
+    debtToEquity: metrics.debtToEquity,
+    totalDebt: metrics.totalDebt,
+    cashAndEquivalents: metrics.cashAndEquivalents,
     peers,
     peerSource: manualPeers.length > 0 ? "manual" : peerTickers.length > 0 ? "curated" : "none",
     source: {
