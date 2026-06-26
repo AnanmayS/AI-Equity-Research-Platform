@@ -1,4 +1,4 @@
-import { runBearCase, runDeepDive, runPeerComparison } from "@/lib/ai";
+import { runBearCase, runDeepDive, runEsgRisk, runManagementQuality, runPeerComparison, runTechnicalAnalysis } from "@/lib/ai";
 import { rowToReport } from "@/lib/reports";
 import { getCachedStockData } from "@/lib/stock-data-cache";
 import { getSupabaseAdmin, getUserFromRequest } from "@/lib/supabase/server";
@@ -39,7 +39,10 @@ async function saveReport(userId: string, report: InvestmentReport) {
       stock_data_json: report.stockData,
       deep_dive_json: report.deepDive,
       peer_comparison_json: report.peerComparison,
-      bear_case_json: report.bearCase
+      bear_case_json: report.bearCase,
+      technical_analysis_json: report.technicalAnalysis ?? null,
+      esg_risk_json: report.esgRisk ?? null,
+      management_quality_json: report.managementQuality ?? null
     })
     .select("*")
     .single();
@@ -92,11 +95,15 @@ export async function POST(request: Request) {
         });
 
         send({ type: "status", message: "Running Deep Dive, Peer Comparison, and Bear Case agents" });
-        const [deepDive, peerComparison, bearCase] = await Promise.all([
-          runDeepDive(stockData),
-          runPeerComparison(stockData),
-          runBearCase(stockData)
-        ]);
+        const [deepDive, peerComparison, bearCase, technicalAnalysis, esgRisk, managementQuality] =
+          await Promise.all([
+            runDeepDive(stockData),
+            runPeerComparison(stockData),
+            runBearCase(stockData),
+            runTechnicalAnalysis(stockData).catch(() => undefined),
+            runEsgRisk(stockData).catch(() => undefined),
+            runManagementQuality(stockData).catch(() => undefined)
+          ]);
 
         const report: InvestmentReport = {
           ticker,
@@ -104,6 +111,9 @@ export async function POST(request: Request) {
           deepDive,
           peerComparison,
           bearCase,
+          technicalAnalysis,
+          esgRisk,
+          managementQuality,
           createdAt: new Date().toISOString(),
           saved: false
         };

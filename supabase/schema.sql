@@ -14,6 +14,9 @@ create table if not exists public.reports (
   deep_dive_json jsonb not null,
   peer_comparison_json jsonb not null,
   bear_case_json jsonb not null,
+  technical_analysis_json jsonb,
+  esg_risk_json jsonb,
+  management_quality_json jsonb,
   created_at timestamptz not null default now()
 );
 
