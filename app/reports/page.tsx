@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { BacktestStatsCard } from "@/components/backtest/backtest-stats-card";
 import { AnalyzeForm } from "@/components/report/analyze-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,6 +90,10 @@ export default function ReportsPage() {
             ))}
           </div>
         )}
+
+        <div className="mt-8">
+          <BacktestStatsCard />
+        </div>
       </div>
     </main>
   );

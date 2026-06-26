@@ -44,6 +44,35 @@ create index if not exists watchlists_user_created_idx on public.watchlists (use
 create index if not exists stock_data_cache_expires_idx on public.stock_data_cache (expires_at);
 create index if not exists stock_data_cache_ticker_idx on public.stock_data_cache (ticker);
 
+-- Backtest results table
+create table if not exists public.backtest_results (
+  ticker text not null,
+  report_date timestamptz not null,
+  report_score int not null,
+  price_at_report numeric,
+  current_price numeric,
+  price_change numeric,
+  price_change_percent numeric,
+  outcome text not null default 'unknown',
+  fetched_at timestamptz not null default now(),
+  primary key (ticker, report_date)
+);
+
+create index if not exists backtest_results_outcome_idx on public.backtest_results (outcome);
+create index if not exists backtest_results_fetched_idx on public.backtest_results (fetched_at desc);
+
+alter table public.backtest_results enable row level security;
+
+drop policy if exists "Users can read backtest results" on public.backtest_results;
+create policy "Users can read backtest results"
+  on public.backtest_results for select
+  using (true);
+
+drop policy if exists "Service role can insert backtest results" on public.backtest_results;
+create policy "Service role can insert backtest results"
+  on public.backtest_results for insert
+  with check (true);
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
