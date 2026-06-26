@@ -1,3 +1,5 @@
+import type { CacheInfo } from "@/lib/stock-data-cache";
+
 export type NormalizedPeer = {
   ticker: string;
   companyName?: string;
@@ -122,6 +124,7 @@ export type InvestmentReport = {
   managementQuality?: ManagementQualityResult;
   createdAt: string;
   cached?: boolean;
+  cacheInfo?: CacheInfo;
   saved?: boolean;
 };
 
