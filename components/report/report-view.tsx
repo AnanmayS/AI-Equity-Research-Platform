@@ -136,6 +136,22 @@ export function ReportView({
               </Button>
             ) : null}
           </div>
+          {report.cacheInfo ? (
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  report.cacheInfo.ageMinutes < 60
+                    ? "bg-green-500"
+                    : report.cacheInfo.ageMinutes < 240
+                      ? "bg-yellow-500"
+                      : "bg-orange-500"
+                }`}
+              />
+              <span>
+                {report.cacheInfo.reason}
+              </span>
+            </div>
+          ) : null}
         </div>
       </section>
 

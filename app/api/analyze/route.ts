@@ -1,6 +1,6 @@
 import { runBearCase, runDeepDive, runEsgRisk, runManagementQuality, runPeerComparison, runTechnicalAnalysis } from "@/lib/ai";
 import { rowToReport } from "@/lib/reports";
-import { getCachedStockData } from "@/lib/stock-data-cache";
+import { getCachedStockData, computeTtlHours } from "@/lib/stock-data-cache";
 import { getSupabaseAdmin, getUserFromRequest } from "@/lib/supabase/server";
 import type { InvestmentReport, StreamEvent } from "@/lib/types";
 import { normalizeTicker } from "@/lib/utils";
@@ -12,15 +12,17 @@ function encode(event: StreamEvent) {
 }
 
 async function findCachedReport(userId: string, ticker: string) {
-  const supabase = getSupabaseAdmin();
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Use shorter TTL during earnings season
+  const ttlHours = computeTtlHours();
+  const cutoff = new Date(Date.now() - ttlHours * 60 * 60 * 1000).toISOString();
 
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("reports")
     .select("*")
     .eq("user_id", userId)
     .eq("ticker", ticker)
-    .gte("created_at", yesterday)
+    .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -41,8 +43,7 @@ async function saveReport(userId: string, report: InvestmentReport) {
       peer_comparison_json: report.peerComparison,
       bear_case_json: report.bearCase,
       technical_analysis_json: report.technicalAnalysis ?? null,
-      esg_risk_json: report.esgRisk ?? null,
-      management_quality_json: report.managementQuality ?? null
+      management_quality_json: report.managementQuality ?? null,
     })
     .select("*")
     .single();
@@ -89,10 +90,12 @@ export async function POST(request: Request) {
         }
 
         send({ type: "status", message: "Fetching verified financial data" });
-        const stockData = await getCachedStockData(ticker, {
+        const cachedResult = await getCachedStockData(ticker, {
           peerTickers,
-          refresh: body.refresh
+          refresh: body.refresh,
         });
+        const stockData = cachedResult.data;
+        const { cacheInfo } = cachedResult;
 
         send({ type: "status", message: "Running Deep Dive, Peer Comparison, and Bear Case agents" });
         const [deepDive, peerComparison, bearCase, technicalAnalysis, esgRisk, managementQuality] =
@@ -102,7 +105,7 @@ export async function POST(request: Request) {
             runBearCase(stockData),
             runTechnicalAnalysis(stockData).catch(() => undefined),
             runEsgRisk(stockData).catch(() => undefined),
-            runManagementQuality(stockData).catch(() => undefined)
+            runManagementQuality(stockData).catch(() => undefined),
           ]);
 
         const report: InvestmentReport = {
@@ -115,12 +118,15 @@ export async function POST(request: Request) {
           esgRisk,
           managementQuality,
           createdAt: new Date().toISOString(),
-          saved: false
+          cacheInfo,
+          saved: false,
         };
 
         if (user) {
           send({ type: "status", message: "Saving report to Supabase" });
           const savedReport = await saveReport(user.id, report);
+          // Preserve cache info from the live report
+          savedReport.cacheInfo = cacheInfo;
           send({ type: "final", report: savedReport });
         } else {
           send({ type: "status", message: "Report generated; sign in to save future reports" });
@@ -131,17 +137,17 @@ export async function POST(request: Request) {
       } catch (error) {
         send({
           type: "error",
-          message: error instanceof Error ? error.message : "Analysis failed"
+          message: error instanceof Error ? error.message : "Analysis failed",
         });
         controller.close();
       }
-    }
+    },
   });
 
   return new Response(stream, {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform"
-    }
+      "Cache-Control": "no-cache, no-transform",
+    },
   });
 }

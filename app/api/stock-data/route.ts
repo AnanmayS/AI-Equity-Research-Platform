@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await getCachedStockData(ticker, { peerTickers });
+    const { data } = await getCachedStockData(ticker, { peerTickers });
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
